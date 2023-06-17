@@ -23,8 +23,6 @@ EOF
 source $HOME/.profile
 go version  
 
-git clone https://github.com/GoudLA-org/goudla-build.git
-cd goudla-build
 sudo mv ./build/goudlad /usr/bin
 sudo mkdir -p $GOPATH/bin
 sudo cp ./cosmovisor/cosmovisor $GOPATH/bin/cosmovisor
