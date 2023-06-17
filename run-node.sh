@@ -9,13 +9,17 @@ export KEYRING=${KEYRING:-"test"}
 sudo apt-get update
 sudo apt install pkg-config build-essential libssl-dev curl jq git libleveldb-dev -y
 sudo apt-get install manpages-dev -y
-curl https://dl.google.com/go/go1.19.linux-amd64.tar.gz | sudo tar -C/usr/local -zxvf -
+
+curl -O https://dl.google.com/go/go1.19.linux-amd64.tar.gz
+sudo tar -C /usr/local -zxvf go1.19.linux-amd64.tar.gz
+
 cat <<'EOF' >>$HOME/.profile
 export GOROOT=/usr/local/go
 export GOPATH=$HOME/go
 export GO111MODULE=on
 export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin
 EOF
+
 source $HOME/.profile
 go version  
 
