@@ -6,6 +6,11 @@ export HOME_DIR=$(eval echo "${HOME_DIR:-"~/.goudla"}")
 export RPC=${RPC:-"26657"}
 export KEYRING=${KEYRING:-"test"}
 
+# Prompt the user for input
+read -p "Enter your GitHub username: " GIT_USERNAME
+read -p "Enter your GitHub personal access token: " GIT_ACCESS_TOKEN
+read -p "Enter Nodes address in format of node_address1@ip:26656,node_address2@ip:26656: " NODES_ADDRESS
+
 sudo apt-get update
 sudo apt install pkg-config build-essential libssl-dev curl jq git libleveldb-dev -y
 sudo apt-get install manpages-dev -y
@@ -19,13 +24,19 @@ EOF
 source $HOME/.profile
 go version  
 
-git clone https://github.com/GoudLA-org/goudla-build.git
-cd goudla-build
+# remove existing daemon.
+rm -rf $HOME_DIR && echo "Removed $HOME_DIR"  
+git clone https://$GIT_USERNAME:$GIT_ACCESS_TOKEN@github.com/GoudLA-org/goudla.git
+cd goudla && git checkout v0.7
+make clean
+make build
 sudo mv ./build/goudlad /usr/bin
-sudo mkdir -p $GOPATH/bin
-sudo cp ./cosmovisor/cosmovisor $GOPATH/bin/cosmovisor
-whereis cosmovisor
 
+cd cosmovisor
+sudo mkdir -p $GOPATH/bin
+make cosmovisor
+sudo cp cosmovisor $GOPATH/bin/cosmovisor
+whereis cosmovisor
 export DAEMON_HOME=$HOME/.goudla
 source ~/.profile
 mkdir -p $DAEMON_HOME/cosmovisor/genesis/bin
@@ -34,16 +45,22 @@ mkdir -p $DAEMON_HOME/cosmovisor/upgrades
 which goudlad
 
 goudlad init $MONIKER --chain-id $CHAIN_ID
-
 rm -rf ~/.goudla/config/genesis.json && mv genesis.json ~/.goudla/config/
+
 # Opens the RPC endpoint to outside connections
 sed -i 's/laddr = "tcp:\/\/127\.0\.0\.1:26657"/laddr = "tcp:\/\/0.0.0.0:26657"/g' $HOME_DIR/config/config.toml
 sed -i 's/cors_allowed_origins = \[\]/cors_allowed_origins = \["\*"\]/g' $HOME_DIR/config/config.toml
+sed -i 's/persistent_peers = ""/persistent_peers = "'"$peers"'"/' $HOME_DIR/config/config.toml
+sed -i 's/enable = false/enable = true/; s/swagger = false/swagger = true/' $HOME_DIR/config/app.toml
+sed -i 's/minimum-gas-prices = ""/minimum-gas-prices = "0.00001uGOUD"/' $HOME_DIR/config/app.toml
 
-cp $(which goudlad) $DAEMON_HOME/cosmovisor/genesis/bin
-
+sudo cp $(which goudlad) $DAEMON_HOME/cosmovisor/genesis/bin
+source ~/.profile
+echo " -------------------- checking for cosmovisor ---------------------------- "
+whereis cosmovisor 
+sudo rm -rf /etc/systemd/system/goudlad.service
 sudo chmod 777 /etc/systemd/system
-COSMOVISOR_HOME=`whereis cosmovisor | grep cosmovisor | cut -c13`
+COSMOVISOR_HOME=`whereis cosmovisor`
 echo '
 [Unit]
 Description=Goudla Daemon
@@ -53,14 +70,25 @@ StartLimitBurst=10
 [Service]
 Type=simple
 User='$USER'
-ExecStart='$COSMOVISOR_HOME' start 30a65af4d15a208eef50ddc508cd003669967633@34.194.129.29:26656, d4affc3e1d1c8d9c33791b1468b6318fed23f781@54.209.76.163:26656
+ExecStart=/home/ubuntu/go/bin/cosmovisor start
 Restart=on-abort
 RestartSec=30
+Environment="DAEMON_NAME=goudlad"
+Environment="DAEMON_HOME='$HOME'sudo systemctl restart/.goudla"
+Environment="DAEMON_ALLOW_DOWNLOAD_BINARIES=false"
+Environment="DAEMON_RESTART_AFTER_UPGRADE=true"
+Environment="DAEMON_POLL_INTERVAL=300ms"
 [Install]
 WantedBy=multi-user.target
 [Service]
 LimitNOFILE=1048576
-' >> /etc/systemd/system/goudla.service
+' >> /etc/systemd/system/goudlad.service
 
 sudo chmod 755 /etc/systemd/system
 
+# Start the chain
+sudo systemctl daemon-reload
+sudo systemctl enable goudlad
+
+# Start the service
+sudo systemctl start goudlad
