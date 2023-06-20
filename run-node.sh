@@ -45,7 +45,7 @@ mkdir -p $DAEMON_HOME/cosmovisor/upgrades
 which goudlad
 
 goudlad init $MONIKER --chain-id $CHAIN_ID
-rm -rf ~/.goudla/config/genesis.json && mv genesis.json ~/.goudla/config/
+rm -rf ~/.goudla/config/genesis.json && curl https://raw.githubusercontent.com/GoudLA-org/goudla-build/main/genesis.json >> ~/.goudla/config/genesis.json
 
 # Opens the RPC endpoint to outside connections
 sed -i 's/laddr = "tcp:\/\/127\.0\.0\.1:26657"/laddr = "tcp:\/\/0.0.0.0:26657"/g' $HOME_DIR/config/config.toml
@@ -74,7 +74,7 @@ ExecStart=/home/ubuntu/go/bin/cosmovisor start
 Restart=on-abort
 RestartSec=30
 Environment="DAEMON_NAME=goudlad"
-Environment="DAEMON_HOME='$HOME'sudo systemctl restart/.goudla"
+Environment="DAEMON_HOME='$HOME'/.goudla"
 Environment="DAEMON_ALLOW_DOWNLOAD_BINARIES=false"
 Environment="DAEMON_RESTART_AFTER_UPGRADE=true"
 Environment="DAEMON_POLL_INTERVAL=300ms"
